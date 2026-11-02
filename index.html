@@ -1,0 +1,750 @@
+```html
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Theo Dõi Thiết Bị Khoa Điện - TNUT</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        tnut: {
+                            blue: '#004A98',
+                            gold: '#FFB800',
+                            red: '#E53E3E',
+                            green: '#38A169',
+                            purple: '#805AD5',
+                            dark: '#1A202C'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .pulse-online { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- Top Navigation Bar -->
+    <nav class="bg-tnut-blue text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-white p-2 rounded-full text-tnut-blue font-bold">
+                        <i class="fa-solid fa-bolt text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg leading-tight">TNUT - KHOA ĐIỆN</h1>
+                        <p class="text-xs text-blue-200">Hệ Thống Theo Dõi Thiết Bị Thời Gian Thực</p>
+                    </div>
+                </div>
+                
+                <!-- Live Status & Clock -->
+                <div class="flex items-center space-x-6">
+                    <div class="hidden md:flex items-center space-x-2 bg-blue-900 bg-opacity-50 px-3 py-1.5 rounded-full text-xs">
+                        <span class="w-2.5 h-2.5 bg-green-400 rounded-full pulse-online"></span>
+                        <span id="live-time" class="font-mono text-gray-200">12:00:00 PM</span>
+                    </div>
+                    
+                    <button id="add-btn" onclick="openAddModal()" class="bg-tnut-gold hover:bg-yellow-500 text-gray-900 font-semibold px-3 py-1.5 rounded-lg text-sm transition duration-150 flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i> Thêm Thiết Bị
+</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Layout -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- Stat Cards Summary -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-gray-500 uppercase">Tổng Thiết Bị</p>
+                    <h3 id="stat-total" class="text-2xl font-bold text-gray-800 mt-1">0</h3>
+                </div>
+                <div class="p-3 bg-blue-50 text-tnut-blue rounded-lg">
+                    <i class="fa-solid fa-cubes text-xl"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-gray-500 uppercase">Hoạt Động Tốt</p>
+                    <h3 id="stat-normal" class="text-2xl font-bold text-green-600 mt-1">0</h3>
+                </div>
+                <div class="p-3 bg-green-50 text-green-600 rounded-lg">
+                    <i class="fa-solid fa-circle-check text-xl"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-gray-500 uppercase">Chờ Duyệt Mượn</p>
+                    <h3 id="stat-pending" class="text-2xl font-bold text-orange-500 mt-1">0</h3>
+                </div>
+                <div class="p-3 bg-orange-50 text-orange-500 rounded-lg">
+                    <i class="fa-solid fa-clock-rotate-left text-xl"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-gray-500 uppercase">Đang Mượn</p>
+                    <h3 id="stat-borrowed" class="text-2xl font-bold text-purple-600 mt-1">0</h3>
+                </div>
+                <div class="p-3 bg-purple-50 text-purple-600 rounded-lg">
+                    <i class="fa-solid fa-hand-holding-hand text-xl"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-gray-500 uppercase">Đang Bảo Trì</p>
+                    <h3 id="stat-maintenance" class="text-2xl font-bold text-yellow-600 mt-1">0</h3>
+                </div>
+                <div class="p-3 bg-yellow-50 text-yellow-600 rounded-lg">
+                    <i class="fa-solid fa-wrench text-xl"></i>
+</div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-gray-500 uppercase">Hỏng Hóc</p>
+                    <h3 id="stat-broken" class="text-2xl font-bold text-red-600 mt-1">0</h3>
+                </div>
+                <div class="p-3 bg-red-50 text-red-600 rounded-lg">
+                    <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts & Logs Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <!-- Chart Container -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 lg:col-span-1">
+                <h2 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie text-tnut-blue"></i> Thống Kê Tình Trạng
+                </h2>
+                <div class="relative h-48">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Real-time Activity Logs -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 lg:col-span-2 flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="font-bold text-gray-700 flex items-center gap-2">
+                            <i class="fa-solid fa-wave-square text-tnut-blue"></i> Nhật Ký Hoạt Động Realtime
+                        </h2>
+                        <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Tự động cập nhật</span>
+                    </div>
+                    <div id="logs-list" class="space-y-2 max-h-40 overflow-y-auto pr-1 text-sm">
+                        <!-- Activity logs dynamically added -->
+                    </div>
+                </div>
+                <div class="mt-3 pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
+                    <span>*Mô phỏng quét dữ liệu cảm biến & kiểm định theo chu kỳ</span>
+                    <button onclick="clearLogs()" class="hover:underline text-gray-600">Xóa nhật ký</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table View with Search and Filters -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <!-- Table Header Controls -->
+            <div class="p-4 sm:p-5 border-b border-gray-100 flex flex-col sm:flex-row gap-3 justify-between items-center">
+                <div class="relative w-full sm:w-80">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+<input type="text" id="search-input" onkeyup="filterData()" placeholder="Tìm tên, mã TB, phòng..." 
+                        class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+
+                <div class="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
+                    <!-- Category Filter -->
+                    <select id="filter-room" onchange="filterData()" class="border border-gray-300 rounded-lg text-sm px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <option value="ALL">Tất cả Phòng TN/Xưởng</option>
+                        <option value="P. Đo Lường">P. Đo Lường & Dụng Cụ</option>
+                        <option value="P. Máy Điện">P. Thí Nghệ Máy Điện</option>
+                        <option value="P. Điều Khiển">P. Điều Khiển Tự Động</option>
+                        <option value="Xưởng Thực Hành">Xưởng Thực Hành Điện</option>
+                    </select>
+
+                    <!-- Status Filter -->
+                    <select id="filter-status" onchange="filterData()" class="border border-gray-300 rounded-lg text-sm px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <option value="ALL">Tất cả Trạng Thái</option>
+                        <option value="Tốt">Tốt (Sẵn sàng)</option>
+                        <option value="Chờ duyệt">Chờ Duyệt Mượn</option>
+                        <option value="Mượn">Đang Cho Mượn</option>
+                        <option value="Bảo trì">Đang Bảo Trì</option>
+                        <option value="Hỏng">Cần Sửa / Hỏng</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Table Section -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-gray-600">
+                    <thead class="bg-gray-50 text-gray-700 uppercase text-xs font-semibold">
+                        <tr>
+                            <th class="px-4 py-3">Mã TB</th>
+                            <th class="px-4 py-3">Tên Thiết Bị / Dụng Cụ</th>
+                            <th class="px-4 py-3">Vị Trí / Phòng</th>
+                            <th class="px-4 py-3">Thông Số / Người Mượn</th>
+                            <th class="px-4 py-3">Cập Nhật Cuối</th>
+                            <th class="px-4 py-3 text-center">Trạng Thái</th>
+                            <th class="px-4 py-3 text-right">Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="equipment-tbody" class="divide-y divide-gray-100">
+                        <!-- Rows injected by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+<div id="no-data" class="hidden p-8 text-center text-gray-500">
+                <i class="fa-regular fa-folder-open text-4xl mb-2 text-gray-300"></i>
+                <p>Không tìm thấy thiết bị phù hợp</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Form (Thêm / Sửa Thiết Bị) -->
+    <div id="modal-bg" class="fixed inset-0 bg-black bg-opacity-40 hidden z-50 flex justify-center items-center p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden transform transition-all">
+            <div class="bg-tnut-blue px-6 py-4 text-white flex justify-between items-center">
+                <h3 id="modal-title" class="font-bold text-lg">Thêm Thiết Bị Mới</h3>
+                <button onclick="closeModal()" class="text-blue-200 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <form id="equipment-form" onsubmit="saveEquipment(event)" class="p-6 space-y-4">
+                <input type="hidden" id="edit-id">
+                
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Mã Thiết Bị</label>
+                    <input type="text" id="form-code" required placeholder="VD: TDH-01, MD-105" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Tên Thiết Bị / Dụng Cụ</label>
+                    <input type="text" id="form-name" required placeholder="VD: Đồng hồ vạn năng Fluke 179" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Vị Trí / Phòng TN</label>
+                    <select id="form-room" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <option value="P. Đo Lường">P. Đo Lường & Dụng Cụ</option>
+                        <option value="P. Máy Điện">P. Thí Nghệ Máy Điện</option>
+                        <option value="P. Điều Khiển">P. Điều Khiển Tự Động</option>
+                        <option value="Xưởng Thực Hành">Xưởng Thực Hành Điện</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Thông Số Theo Dõi / Tình Trạng</label>
+<input type="text" id="form-param" placeholder="VD: Điện áp: 220V, Nhiệt độ: 38°C" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Trạng Thái Khoa Điện</label>
+                    <select id="form-status" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <option value="Tốt">Tốt (Sẵn sàng)</option>
+                        <option value="Chờ duyệt">Chờ Duyệt Mượn</option>
+                        <option value="Mượn">Đang Cho Mượn</option>
+                        <option value="Bảo trì">Đang Bảo Trì</option>
+                        <option value="Hỏng">Hỏng Hóc / Cần Sửa</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-4 border-t border-gray-100">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">Hủy</button>
+                    <button type="submit" class="px-4 py-2 bg-tnut-blue text-white rounded-lg text-sm font-semibold hover:bg-blue-800">Lưu Dữ Liệu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Form (Mượn Thiết Bị) -->
+    <div id="borrow-modal-bg" class="fixed inset-0 bg-black bg-opacity-40 hidden z-50 flex justify-center items-center p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden transform transition-all">
+            <div class="bg-purple-700 px-6 py-4 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg"><i class="fa-solid fa-hand-holding-hand mr-2"></i> Đăng Ký Mượn Thiết Bị</h3>
+                <button onclick="closeBorrowModal()" class="text-purple-200 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <form id="borrow-form" onsubmit="confirmBorrow(event)" class="p-6 space-y-4">
+                <input type="hidden" id="borrow-id">
+                
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Thiết Bị Mượn</label>
+                    <input type="text" id="borrow-equipment-name" readonly class="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Người Mượn (Họ tên - Mã SV/GV)</label>
+<input type="text" id="borrower-name" required placeholder="VD: Nguyễn Văn A - K57TĐH (SV12345)" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Hạn Trả Dự Kiến</label>
+                    <input type="date" id="borrow-return-date" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Mục Đích Mượn / Ghi Chú</label>
+                    <input type="text" id="borrow-note" placeholder="VD: Thực hành Đồ án TN Tự Động Hóa" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-4 border-t border-gray-100">
+                    <button type="button" onclick="closeBorrowModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">Hủy</button>
+                    <button type="submit" class="px-4 py-2 bg-purple-700 text-white rounded-lg text-sm font-semibold hover:bg-purple-800">Xác Nhận Mượn</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl hidden transition-opacity flex items-center gap-3 z-50 text-sm">
+        <i id="toast-icon" class="fa-solid fa-circle-info text-blue-400"></i>
+        <span id="toast-msg">Thông báo hệ thống</span>
+    </div>
+
+    <script>
+        // Default Mock Data for Khoa Điện TNUT
+        let initialData = [
+            { id: 1, code: 'DL-01', name: 'Đồng hồ vạn năng Oscilloscope Tektronix', room: 'P. Đo Lường', param: 'Điện áp: 220V | Sai số: 0.01%', status: 'Tốt', lastCheck: 'Vừa xong' },
+            { id: 2, code: 'MD-02', name: 'Động cơ không đồng bộ 3 pha 2.2kW', room: 'P. Máy Điện', param: 'Nhiệt độ cuộn dây: 78°C (Cao)', status: 'Bảo trì', lastCheck: '2 phút trước' },
+            { id: 3, code: 'PLC-05', name: 'Bộ thực hành PLC Siemens S7-1200', room: 'P. Điều Khiển', param: 'Đăng ký: Trần Văn B (K58TĐH)', status: 'Chờ duyệt', borrower: 'Trần Văn B (K58TĐH)', returnDate: '2026-11-06', lastCheck: '5 phút trước' },
+            { id: 4, code: 'X-09', name: 'Máy biến áp thí nghiệm 10kVA', room: 'Xưởng Thực Hành', param: 'Rò điện nhẹ | Cách điện kém', status: 'Hỏng', lastCheck: '10 phút trước' },
+{ id: 5, code: 'DL-04', name: 'Ampe kìm Hioki 3280-10F', room: 'P. Đo Lường', param: 'Pin: 92% | Đo chuẩn', status: 'Tốt', lastCheck: 'Vừa xong' },
+            { id: 6, code: 'MD-08', name: 'Máy phát điện đồng bộ 5kVA', room: 'P. Máy Điện', param: 'Mượn bởi: Nguyễn Văn A (K57Hệ Thống Điện)', status: 'Mượn', borrower: 'Nguyễn Văn A (K57Hệ Thống Điện)', returnDate: '2026-11-05', lastCheck: '1 phút trước' }
+        ];
+
+        let equipmentList = JSON.parse(localStorage.getItem('tnut_equipments')) || initialData;
+        let chartInstance = null;
+
+        // Init App
+        window.onload = function() {
+            startClock();
+            renderTable();
+            initChart();
+            startRealtimeSimulation();
+        };
+
+        // Live Clock
+        function startClock() {
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('live-time').innerText = now.toLocaleTimeString('vi-VN');
+            }, 1000);
+        }
+
+        // Render Data Table
+        function renderTable(data = equipmentList) {
+            const tbody = document.getElementById('equipment-tbody');
+            const noData = document.getElementById('no-data');
+            tbody.innerHTML = '';
+
+            if(data.length === 0) {
+                noData.classList.remove('hidden');
+            } else {
+                noData.classList.add('hidden');
+            }
+
+            data.forEach(item => {
+                let statusBadge = '';
+                let actionButtons = '';
+
+                if(item.status === 'Tốt') {
+                    statusBadge = `<span class="bg-green-100 text-green-700 font-semibold px-2.5 py-1 rounded-full text-xs inline-flex items-center gap-1">
+                                    <i class="fa-solid fa-check text-[10px]"></i> Tốt
+                                  </span>`;
+                    actionButtons += `<button onclick="openBorrowModal(${item.id})" class="p-1.5 text-purple-600 hover:bg-purple-100 rounded" title="Sinh viên đăng ký mượn">
+                                        <i class="fa-solid fa-hand-holding-hand"></i>
+                                      </button>`;
+                } else if(item.status === 'Chờ duyệt') {
+                    statusBadge = `<span class="bg-orange-100 text-orange-700 font-semibold px-2.5 py-1 rounded-full text-xs inline-flex items-center gap-1 animate-pulse">
+                                    <i class="fa-solid fa-hourglass-half text-[10px]"></i> Chờ Duyệt
+                                  </span>`;
+                    actionButtons += `<button onclick="approveBorrow(${item.id})" class="p-1.5 text-green-600 hover:bg-green-100 rounded font-bold" title="Duyệt yêu cầu mượn">
+                                        <i class="fa-solid fa-check"></i>
+                                      </button>
+<button onclick="rejectBorrow(${item.id})" class="p-1.5 text-red-600 hover:bg-red-100 rounded font-bold" title="Từ chối yêu cầu">
+                                        <i class="fa-solid fa-xmark"></i>
+                                      </button>`;
+                } else if(item.status === 'Mượn') {
+                    statusBadge = `<span class="bg-purple-100 text-purple-700 font-semibold px-2.5 py-1 rounded-full text-xs inline-flex items-center gap-1">
+                                    <i class="fa-solid fa-user-clock text-[10px]"></i> Đang Mượn
+                                  </span>`;
+                    actionButtons += `<button onclick="returnEquipment(${item.id})" class="p-1.5 text-blue-600 hover:bg-blue-100 rounded" title="Nhận lại thiết bị">
+                                        <i class="fa-solid fa-rotate-left"></i>
+                                      </button>`;
+                } else if(item.status === 'Bảo trì') {
+                    statusBadge = `<span class="bg-yellow-100 text-yellow-800 font-semibold px-2.5 py-1 rounded-full text-xs inline-flex items-center gap-1">
+                                    <i class="fa-solid fa-screwdriver-wrench text-[10px]"></i> Bảo trì
+                                  </span>`;
+                } else {
+                    statusBadge = `<span class="bg-red-100 text-red-700 font-semibold px-2.5 py-1 rounded-full text-xs inline-flex items-center gap-1">
+                                    <i class="fa-solid fa-xmark text-[10px]"></i> Hỏng
+                                  </span>`;
+                }
+
+                let paramDisplay = item.param || '---';
+                if ((item.status === 'Mượn' || item.status === 'Chờ duyệt') && item.borrower) {
+                    paramDisplay = `<span class="${item.status === 'Chờ duyệt' ? 'text-orange-600' : 'text-purple-700'} font-medium">${item.status === 'Chờ duyệt' ? 'Đăng ký:' : 'Người mượn:'} ${item.borrower}</span><br><span class="text-[11px] text-gray-400">Hạn trả: ${item.returnDate || 'Chưa định'}</span>`;
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-blue-50/50 transition-colors duration-150';
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-mono font-bold text-tnut-blue">${item.code}</td>
+                    <td class="px-4 py-3 font-medium text-gray-800">${item.name}</td>
+                    <td class="px-4 py-3 text-gray-600"><span class="bg-gray-100 px-2 py-0.5 rounded text-xs">${item.room}</span></td>
+                    <td class="px-4 py-3 text-xs text-gray-500">${paramDisplay}</td>
+                    <td class="px-4 py-3 text-xs text-gray-400">${item.lastCheck}</td>
+                    <td class="px-4 py-3 text-center">${statusBadge}</td>
+                    <td class="px-4 py-3 text-right space-x-1">
+${actionButtons}
+                        <button onclick="editEquipment(${item.id})" class="p-1.5 text-blue-600 hover:bg-blue-100 rounded" title="Chỉnh sửa">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button onclick="deleteEquipment(${item.id})" class="p-1.5 text-red-600 hover:bg-red-100 rounded" title="Xóa">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            updateStats();
+        }
+
+        // Update Counter Cards and Chart
+        function updateStats() {
+            const total = equipmentList.length;
+            const normal = equipmentList.filter(e => e.status === 'Tốt').length;
+            const pending = equipmentList.filter(e => e.status === 'Chờ duyệt').length;
+            const borrowed = equipmentList.filter(e => e.status === 'Mượn').length;
+            const maintenance = equipmentList.filter(e => e.status === 'Bảo trì').length;
+            const broken = equipmentList.filter(e => e.status === 'Hỏng').length;
+
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-normal').innerText = normal;
+            document.getElementById('stat-pending').innerText = pending;
+            document.getElementById('stat-borrowed').innerText = borrowed;
+            document.getElementById('stat-maintenance').innerText = maintenance;
+            document.getElementById('stat-broken').innerText = broken;
+
+            if(chartInstance) {
+                chartInstance.data.datasets[0].data = [normal, pending, borrowed, maintenance, broken];
+                chartInstance.update();
+            }
+
+            // Save state
+            localStorage.setItem('tnut_equipments', JSON.stringify(equipmentList));
+        }
+
+        // Initialize Chart.js
+        function initChart() {
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Tốt', 'Chờ duyệt', 'Đang Mượn', 'Bảo trì', 'Hỏng'],
+                    datasets: [{
+                        data: [0, 0, 0, 0, 0],
+                        backgroundColor: ['#38A169', '#ED8936', '#805AD5', '#D69E2E', '#E53E3E'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+                    }
+                }
+            });
+            updateStats();
+        }
+
+        // Borrow Modal Logic
+function openBorrowModal(id) {
+            const item = equipmentList.find(e => e.id === id);
+            if(item) {
+                document.getElementById('borrow-id').value = item.id;
+                document.getElementById('borrow-equipment-name').value = `[${item.code}] ${item.name}`;
+                document.getElementById('borrower-name').value = '';
+                document.getElementById('borrow-note').value = '';
+
+                const defaultReturn = new Date();
+                defaultReturn.setDate(defaultReturn.getDate() + 3);
+                document.getElementById('borrow-return-date').value = defaultReturn.toISOString().split('T')[0];
+
+                document.getElementById('borrow-modal-bg').classList.remove('hidden');
+            }
+        }
+
+        function closeBorrowModal() {
+            document.getElementById('borrow-modal-bg').classList.add('hidden');
+        }
+
+        // Student Registers Borrow -> Status becomes "Chờ duyệt"
+        function confirmBorrow(e) {
+            e.preventDefault();
+            const id = document.getElementById('borrow-id').value;
+            const borrower = document.getElementById('borrower-name').value;
+            const returnDate = document.getElementById('borrow-return-date').value;
+
+            const index = equipmentList.findIndex(item => item.id == id);
+            if(index !== -1) {
+                equipmentList[index].status = 'Chờ duyệt';
+                equipmentList[index].borrower = borrower;
+                equipmentList[index].returnDate = returnDate;
+                equipmentList[index].lastCheck = 'Đã gửi yêu cầu';
+
+                addLog(`[ĐĂNG KÝ MƯỢN] SV ${borrower} đăng ký mượn thiết bị ${equipmentList[index].code}`, 'orange');
+                showToast(`Đã gửi yêu cầu mượn! Vui lòng chờ Cán bộ/Quản lý duyệt.`);
+            }
+
+            closeBorrowModal();
+            filterData();
+        }
+
+        // Admin Approves Request -> Status becomes "Mượn"
+        function approveBorrow(id) {
+            const index = equipmentList.findIndex(item => item.id == id);
+            if(index !== -1) {
+                const borrower = equipmentList[index].borrower;
+                equipmentList[index].status = 'Mượn';
+                equipmentList[index].lastCheck = 'Đã duyệt';
+
+                addLog(`[DUYỆT MƯỢN] Cán bộ đã ĐỒNG Ý cho SV ${borrower} mượn TB ${equipmentList[index].code}`, 'blue');
+                showToast(`Đã duyệt yêu cầu mượn thành công!`);
+                filterData();
+            }
+        }
+
+        // Admin Rejects Request -> Status returns to "Tốt"
+        function rejectBorrow(id) {
+            const index = equipmentList.findIndex(item => item.id == id);
+            if(index !== -1 && confirm(`Xác nhận TỪ CHỐI yêu cầu mượn thiết bị "${equipmentList[index].code}"?`)) {
+                const borrower = equipmentList[index].borrower;
+equipmentList[index].status = 'Tốt';
+                equipmentList[index].borrower = null;
+                equipmentList[index].returnDate = null;
+                equipmentList[index].lastCheck = 'Bị từ chối mượn';
+
+                addLog(`[TỪ CHỐI MƯỢN] Cán bộ đã TỪ CHỐI yêu cầu mượn TB ${equipmentList[index].code} của SV ${borrower}`, 'red');
+                showToast(`Đã từ chối yêu cầu mượn!`, 'warning');
+                filterData();
+            }
+        }
+
+        function returnEquipment(id) {
+            const index = equipmentList.findIndex(item => item.id == id);
+            if(index !== -1 && confirm(`Xác nhận nhận lại thiết bị "${equipmentList[index].name}" (${equipmentList[index].code})?`)) {
+                const borrower = equipmentList[index].borrower || 'Người mượn';
+                equipmentList[index].status = 'Tốt';
+                equipmentList[index].borrower = null;
+                equipmentList[index].returnDate = null;
+                equipmentList[index].param = 'Hoạt động bình thường';
+                equipmentList[index].lastCheck = 'Vừa trả';
+
+                addLog(`[TRẢ TB] ${borrower} đã trả lại thiết bị ${equipmentList[index].code}`, 'blue');
+                showToast(`Đã nhận lại thiết bị thành công!`);
+                filterData();
+            }
+        }
+
+        // Filter Data by Search, Room and Status
+        function filterData() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const roomVal = document.getElementById('filter-room').value;
+            const statusVal = document.getElementById('filter-status').value;
+
+            const filtered = equipmentList.filter(item => {
+                const matchQuery = item.name.toLowerCase().includes(query) || 
+                                   item.code.toLowerCase().includes(query) || 
+                                   item.room.toLowerCase().includes(query) ||
+                                   (item.borrower && item.borrower.toLowerCase().includes(query));
+                const matchRoom = (roomVal === 'ALL') || (item.room === roomVal);
+                const matchStatus = (statusVal === 'ALL') || (item.status === statusVal);
+
+                return matchQuery && matchRoom && matchStatus;
+            });
+
+            renderTable(filtered);
+        }
+
+        // Modal Controls
+        function openAddModal() {
+            document.getElementById('equipment-form').reset();
+            document.getElementById('edit-id').value = '';
+            document.getElementById('modal-title').innerText = 'Thêm Thiết Bị Mới';
+            document.getElementById('modal-bg').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal-bg').classList.add('hidden');
+        }
+
+        // Save (Add or Edit)
+        function saveEquipment(e) {
+e.preventDefault();
+            const id = document.getElementById('edit-id').value;
+            const code = document.getElementById('form-code').value;
+            const name = document.getElementById('form-name').value;
+            const room = document.getElementById('form-room').value;
+            const param = document.getElementById('form-param').value;
+            const status = document.getElementById('form-status').value;
+
+            if(id) {
+                // Update
+                const index = equipmentList.findIndex(item => item.id == id);
+                if(index !== -1) {
+                    equipmentList[index] = { ...equipmentList[index], code, name, room, param, status, lastCheck: 'Vừa cập nhật' };
+                    addLog(`Đã cập nhật thông tin thiết bị: [${code}] ${name}`);
+                    showToast('Cập nhật thiết bị thành công!');
+                }
+            } else {
+                // Add New
+                const newItem = {
+                    id: Date.now(),
+                    code,
+                    name,
+                    room,
+                    param: param || 'Bình thường',
+                    status,
+                    lastCheck: 'Vừa cập nhật'
+                };
+                equipmentList.unshift(newItem);
+                addLog(`Đã thêm mới thiết bị: [${code}] ${name}`);
+                showToast('Thêm thiết bị mới thành công!');
+            }
+
+            closeModal();
+            filterData();
+        }
+
+        function editEquipment(id) {
+            const item = equipmentList.find(e => e.id === id);
+            if(item) {
+                document.getElementById('edit-id').value = item.id;
+                document.getElementById('form-code').value = item.code;
+                document.getElementById('form-name').value = item.name;
+                document.getElementById('form-room').value = item.room;
+                document.getElementById('form-param').value = item.param;
+                document.getElementById('form-status').value = item.status;
+
+                document.getElementById('modal-title').innerText = 'Chỉnh Sửa Thiết Bị';
+                document.getElementById('modal-bg').classList.remove('hidden');
+            }
+        }
+
+        function deleteEquipment(id) {
+            const item = equipmentList.find(e => e.id === id);
+            if(item && confirm(`Bạn có chắc chắn muốn xóa thiết bị "${item.name}" (${item.code}) không?`)) {
+                equipmentList = equipmentList.filter(e => e.id !== id);
+                addLog(`Đã xóa thiết bị: [${item.code}] ${item.name}`, 'red');
+                showToast('Đã xóa thiết bị!', 'warning');
+                filterData();
+            }
+        }
+
+        // Realtime Simulation (Simulate automated sensor updates / IoT feedback)
+        function startRealtimeSimulation() {
+addLog("Khởi động hệ thống kết nối IoT thiết bị Khoa Điện...", "blue");
+
+            setInterval(() => {
+                if(equipmentList.length === 0) return;
+
+                // Pick a random equipment to simulate parameter fluctuation
+                const randomIndex = Math.floor(Math.random() * equipmentList.length);
+                const target = equipmentList[randomIndex];
+                const nowTime = new Date().toLocaleTimeString('vi-VN');
+
+                // Simulate random temperature/voltage changes
+                if(target.code.startsWith('MD')) {
+                    const temp = (60 + Math.random() * 25).toFixed(1);
+                    target.param = `Nhiệt độ cuộn dây: ${temp}°C`;
+                    target.lastCheck = nowTime;
+                    if(temp > 80 && target.status !== 'Hỏng') {
+                        target.status = 'Bảo trì';
+                        addLog(`CẢNH BÁO: Thiết bị ${target.code} vượt quá nhiệt độ an toàn (${temp}°C)!`, 'red');
+                    }
+                } else if(target.code.startsWith('DL')) {
+                    const volt = (218 + Math.random() * 5).toFixed(1);
+                    target.param = `Điện áp nguồn: ${volt}V | Sai số: 0.01%`;
+                    target.lastCheck = nowTime;
+                }
+
+                filterData();
+            }, 8000); // Trigger every 8s
+        }
+
+        // Realtime Activity Logs Manager
+        function addLog(msg, color = 'gray') {
+            const logContainer = document.getElementById('logs-list');
+            const timeStr = new Date().toLocaleTimeString('vi-VN');
+            
+            let colorClass = 'text-gray-600 border-gray-200';
+            if(color === 'red') colorClass = 'text-red-600 border-red-200 bg-red-50';
+            if(color === 'blue') colorClass = 'text-blue-600 border-blue-200 bg-blue-50';
+            if(color === 'orange') colorClass = 'text-orange-600 border-orange-200 bg-orange-50';
+
+            const logItem = document.createElement('div');
+            logItem.className = `p-2 rounded border text-xs font-mono flex items-center justify-between ${colorClass}`;
+            logItem.innerHTML = `
+                <span><i class="fa-solid fa-angle-right mr-1"></i> ${msg}</span>
+                <span class="text-[10px] opacity-75">${timeStr}</span>
+            `;
+
+            logContainer.prepend(logItem);
+
+            // Keep max 15 log entries
+            if(logContainer.children.length > 15) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+
+        function clearLogs() {
+            document.getElementById('logs-list').innerHTML = '';
+            addLog("Đã xóa lịch sử nhật ký", "gray");
+        }
+
+        // Toast Feedback
+        function showToast(msg, type = 'info') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-msg');
+const toastIcon = document.getElementById('toast-icon');
+
+            toastMsg.innerText = msg;
+            if(type === 'warning') {
+                toastIcon.className = "fa-solid fa-triangle-exclamation text-yellow-400";
+            } else {
+                toastIcon.className = "fa-solid fa-circle-check text-green-400";
+            }
+
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
+```
